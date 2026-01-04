@@ -13,6 +13,7 @@ import { QuartzPluginData } from "../vfile"
 import fs from "node:fs/promises"
 import { styleText } from "util"
 
+
 const defaultOptions: SocialImageOptions = {
   colorScheme: "lightMode",
   width: 1200,
