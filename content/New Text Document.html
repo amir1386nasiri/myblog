@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>سامانه مدیریت کلاس مجازی — نسخه معلم (پایه ششم)</title>
+  <style>
+    :root{--bg:#f6f9fb;--card:#ffffff;--accent:#2563eb;--muted:#6b7280;--success:#16a34a;--danger:#ef4444}
+    *{box-sizing:border-box;font-family:Vazirmatn, system-ui, -apple-system, 'Segoe UI', Roboto, Arial}
+    body{margin:0;background:var(--bg);color:#0f172a;padding:16px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    h1{font-size:18px;margin:0}
+    .container{max-width:1200px;margin:18px auto}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:16px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    .small{font-size:13px;color:var(--muted)}
+    label{display:block;margin-top:8px;font-size:13px}
+    input[type=text],select,textarea,input[type=date],input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid #e6edf3;margin-top:6px}
+    button{background:var(--accent);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid rgba(37,99,235,0.12)}
+    .list{max-height:55vh;overflow:auto;margin-top:8px}
+    .student-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:6px;background:#f8fbff}
+    .student-item .meta{display:flex;gap:8px;align-items:center}
+    .name{font-weight:700}
+    .controls{display:flex;gap:6px}
+    .search{display:flex;gap:8px;align-items:center}
+    .row{display:flex;gap:8px;align-items:center}
+    .stats{display:flex;gap:10px;flex-wrap:wrap}
+    .stat{background:#f8fafc;padding:10px;border-radius:8px;min-width:140px}
+    .table{width:100%;border-collapse:collapse;margin-top:8px}
+    .table th,.table td{padding:8px;border-bottom:1px solid #eef2f6;text-align:center}
+    .actions{display:flex;gap:6px}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+    .tag{background:#eef2ff;padding:4px 8px;border-radius:6px;font-size:12px}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #e6edf3;background:white;font-size:12px}
+    @media(max-width:880px){.grid{grid-template-columns:1fr}header{flex-direction:column;align-items:flex-start}}
+    @media print{header, .controls, #search, #addDummy, #addBtn, #importBtn, #exportBtn, #clearBtn {display:none} .card{box-shadow:none;border-radius:0}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>سامانه مدیریت کلاس مجازی — نسخه معلم (پایه ششم)</h1>
+        <div class="small">حضور/غیاب، تکالیف درس‌محور توصیفی، پیگیری پیشرفت، یادآورها و گزارش‌گیری آفلاین</div>
+      </div>
+      <div class="row">
+        <button id="exportBtn">خروجی CSV (Excel)</button>
+        <button id="exportStudentBtn" class="ghost">خروجی CSV دانش‌آموز</button>
+        <button id="printPdf" class="ghost">خروجی PDF (چاپ)</button>
+        <button id="backupBtn" class="ghost">دانلود بکاپ JSON</button>
+        <button id="importBtn" class="ghost">ورودی JSON</button>
+        <input id="importFile" type="file" accept="application/json" style="display:none">
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- sidebar -->
+      <aside class="card">
+        <div class="search">
+          <input id="search" type="text" placeholder="جستجو نام دانش‌آموز یا کلاس..." />
+          <button id="addDummy" class="ghost">افزودن نمونه</button>
+        </div>
+
+        <label>افزودن / ویرایش دانش‌آموز</label>
+        <input id="newName" type="text" placeholder="نام و نام خانوادگی" />
+        <input id="newClass" type="text" placeholder="پایه / کلاس (اختیاری)" />
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="addBtn">افزودن</button>
+          <button id="updateBtn" class="ghost" disabled>ویرایش انتخاب‌شده</button>
+        </div>
+
+        <hr style="margin-top:10px"/>
+        <div>
+          <label>لیست درس‌ها (کتاب‌های درسی)</label>
+          <input id="subjectInput" type="text" placeholder="نام درس را وارد کنید و دکمه + را بزنید" />
+          <div style="display:flex;gap:8px;margin-top:6px"><button id="addSubject" class="ghost">+</button><button id="clearSubjects" class="ghost">پاک کردن درس‌ها</button></div>
+          <div id="subjectList" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <hr style="margin-top:10px"/>
+        <div>
+          <label>قالب درس و برنامه هفتگی (نمونه)</label>
+          <select id="templateSelect">
+            <option value="">(یک قالب انتخاب کنید)</option>
+            <option value="basic">قالب پایه: اهداف، فعالیت‌ها، تکلیف</option>
+            <option value="project">قالب پروژه‌ای: هدف، مراحل، منابع، مهلت</option>
+          </select>
+          <div style="margin-top:8px"><button id="applyTemplate" class="ghost">اعمال قالب</button></div>
+        </div>
+
+        <div class="list" id="studentList" aria-live="polite"></div>
+      </aside>
+
+      <!-- main content -->
+      <section>
+        <div class="card" id="studentCard">
+          <div id="noSelection">
+            <div class="small">یک دانش‌آموز را از لیست انتخاب کنید یا ایجاد نمایید. جستجو سریع فعال است. کلیدهای میانبر: N (دانش‌آموز جدید)، S (جستجو).</div>
+          </div>
+
+          <div id="detailView" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <h2 id="sName">نام دانش‌آموز</h2>
+                <div class="small" id="sClass">کلاس: -</div>
+              </div>
+              <div class="actions">
+                <button id="backToList" class="ghost">بازگشت</button>
+                <button id="deleteStudent" class="ghost">حذف دانش‌آموز</button>
+              </div>
+            </div>
+
+            <hr />
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <div style="flex:1;min-width:260px">
+                <label>تاریخ</label>
+                <input id="recDate" type="date" />
+
+                <label>حضور</label>
+                <select id="recAttendance"><option value="present">حاضر</option><option value="absent">غایب</option><option value="late">تاخیر</option></select>
+
+                <label>درس مرتبط</label>
+                <select id="recSubject"><option value="">(یک درس انتخاب کنید)</option></select>
+
+                <label>موضوع / عنوان فعالیت</label>
+                <input id="recTitle" type="text" placeholder="مثلاً: تمرین فصل 3 — تقسیم" />
+
+                <label>شرح توصیفی فعالیت / تکلیف (متن بلند)</label>
+                <textarea id="recDesc" rows="5" placeholder="مثلاً: در درس ریاضی، دانش‌آموز پروژه گروهی را به‌خوبی انجام داد؛ نقاط قوت: ... نقاط قابل بهبود: ..."></textarea>
+
+                <label>مهلت تحویل (اختیاری)</label>
+                <input id="dueDate" type="date" />
+
+                <div style="margin-top:8px;display:flex;gap:8px">
+                  <button id="saveRecord">ذخیره رکورد</button>
+                  <button id="saveNoteOnly" class="ghost">ذخیره یادداشت سریع</button>
+                </div>
+
+                <div style="margin-top:8px">
+                  <label>وضعیت پیگیری</label>
+                  <select id="followStatus"><option value="">(بدون)</option><option value="needs_review">نیاز به بازبینی</option><option value="excellent">عملکرد عالی</option><option value="needs_help">نیاز به کمک</option></select>
+                </div>
+              </div>
+
+              <div style="flex:1;min-width:360px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <h3 class="small">سوابق (جدید → قدیم)</h3>
+                  <div class="small">فیلتر: <input id="filterFrom" type="date"> تا <input id="filterTo" type="date"> <button id="applyDateFilter" class="ghost">اعمال</button></div>
+                </div>
+
+                <table class="table" id="recordsTable">
+                  <thead><tr><th>تاریخ</th><th>حضور</th><th>درس</th><th>عنوان</th><th>شرح</th><th>مهلت</th><th>پیگیری</th><th>عملیات</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+
+                <h3 class="small" style="margin-top:12px">نمودار خلاصه حضور / مهلت‌های نزدیک</h3>
+                <canvas id="summaryChart" width="600" height="240" style="width:100%;max-width:600px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#f0f6ff)"></canvas>
+
+                <div id="nearDue" style="margin-top:8px"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>گزارش کلی کلاس</h3>
+            <div class="small">تعداد دانش‌آموز: <span id="countStudents">0</span></div>
+          </div>
+
+          <div class="stats" id="classStats"></div>
+
+          <h4 style="margin-top:12px">نمودارها</h4>
+          <canvas id="classChart" width="800" height="260" style="width:100%;max-width:800px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#fffaf0)"></canvas>
+
+          <div style="margin-top:10px">
+            <label>جستجوی متن شرح‌ها</label>
+            <input id="searchDesc" type="text" placeholder="جستجو در شرح‌های توصیفی (مثلاً 'گروهی'، 'نیاز به کمک')" />
+            <div style="margin-top:8px"><button id="searchDescBtn" class="ghost">جستجو</button></div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+
+    <footer class="small">نسخه آفلاین — ذخیره در مرورگر (LocalStorage) — طراحی‌شده برای معلمان پایه ششم — شامل قابلیت‌های آموزشی و پیگیری</footer>
+  </div>
+
+  <script>
+    // ===== دیتابیس محلی =====
+    const STORAGE_KEY = 'student-performance-pro-v1'
+    let db = { students: [], subjects: [] };
+    let selectedId = null;
+
+    function loadDB(){ try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw) db = JSON.parse(raw) }catch(e){console.error(e)} }
+    function saveDB(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)) }catch(e){console.error(e)} }
+
+    function uid(len=10){ return Math.random().toString(36).slice(2,2+len) }
+    function formatDate(d){ if(!d) return ''; const dt = new Date(d); try{ return dt.toLocaleDateString('fa-IR') }catch(e){ return d } }
+
+    // ===== عناصر DOM =====
+    const studentListEl = document.getElementById('studentList')
+    const searchEl = document.getElementById('search')
+
+    // ===== رندر لیست دانش‌آموزان =====
+    function renderStudentList(filter=''){
+      studentListEl.innerHTML=''
+      const q = filter.trim().toLowerCase()
+      const matches = db.students.filter(s=> s.name.toLowerCase().includes(q) || (s.class||'').toLowerCase().includes(q))
+      matches.sort((a,b)=>a.name.localeCompare(b.name,'fa'))
+      for(const s of matches){
+        const it = document.createElement('div'); it.className='student-item'
+        const meta = document.createElement('div'); meta.className='meta'
+        const name = document.createElement('div'); name.className='name'; name.textContent=s.name
+        const cls = document.createElement('div'); cls.className='small'; cls.textContent=s.class||''
+        meta.appendChild(name); meta.appendChild(cls)
+        const ctr = document.createElement('div'); ctr.className='controls'
+        const openBtn = document.createElement('button'); openBtn.textContent='باز کردن'; openBtn.onclick=()=>openStudent(s.id)
+        const editBtn = document.createElement('button'); editBtn.className='ghost'; editBtn.textContent='ویرایش'; editBtn.onclick=()=>startEditStudent(s.id)
+        ctr.appendChild(openBtn); ctr.appendChild(editBtn)
+        it.appendChild(meta); it.appendChild(ctr)
+        studentListEl.appendChild(it)
+      }
+      document.getElementById('countStudents').textContent = db.students.length
+    }
+
+    function startEditStudent(id){ const s = db.students.find(x=>x.id===id); if(!s) return; document.getElementById('newName').value = s.name; document.getElementById('newClass').value = s.class||''; document.getElementById('updateBtn').disabled=false; document.getElementById('updateBtn').dataset.id=id }
+
+    // ===== موضوعات =====
+    function renderSubjects(){ const el = document.getElementById('subjectList'); el.innerHTML=''; for(const sub of db.subjects){ const d = document.createElement('div'); d.className='tag'; d.style.margin='6px 6px 0 0'; d.textContent=sub; el.appendChild(d) } const sel = document.getElementById('recSubject'); sel.innerHTML='<option value=\"\">(یک درس انتخاب کنید)</option>'; for(const sub of db.subjects){ const o = document.createElement('option'); o.value=sub; o.textContent=sub; sel.appendChild(o) } }
+
+    document.getElementById('addSubject').addEventListener('click', ()=>{ const v = document.getElementById('subjectInput').value.trim(); if(!v) return; if(!db.subjects.includes(v)) db.subjects.push(v); document.getElementById('subjectInput').value=''; saveDB(); renderSubjects(); })
+    document.getElementById('clearSubjects').addEventListener('click', ()=>{ if(!confirm('پاک شدن لیست درس‌ها؟')) return; db.subjects=[]; saveDB(); renderSubjects(); })
+
+    // ===== افزودن و ویرایش دانش‌آموز =====
+    document.getElementById('addBtn').addEventListener('click', ()=>{
+      const name = document.getElementById('newName').value.trim(); const cls = document.getElementById('newClass').value.trim()
+      if(!name){ alert('نام وارد نشده'); return }
+      db.students.push({id:uid(), name, class:cls, records:[]}); saveDB(); document.getElementById('newName').value=''; document.getElementById('newClass').value=''; renderStudentList(searchEl.value); renderClassSummary();
+    })
+
+    document.getElementById('updateBtn').addEventListener('click', ()=>{
+      const id = document.getElementById('updateBtn').dataset.id; if(!id) return; const s = db.students.find(x=>x.id===id); if(!s) return; s.name = document.getElementById('newName').value.trim() || s.name; s.class = document.getElementById('newClass').value.trim() || s.class; saveDB(); document.getElementById('newName').value=''; document.getElementById('newClass').value=''; document.getElementById('updateBtn').disabled=true; renderStudentList(searchEl.value); if(selectedId===id) openStudent(id); renderClassSummary();
+    })
+
+    document.getElementById('addDummy').addEventListener('click', ()=>{ const n = 'دانش‌آموز ' + (db.students.length+1); db.students.push({id:uid(),name:n,class:'پایه ششم',records:[]}); saveDB(); renderStudentList(searchEl.value); renderClassSummary() })
+
+    // ===== باز کردن نمای دانش‌آموز =====
+    function openStudent(id){ selectedId = id; const s = db.students.find(x=>x.id===id); if(!s) return; document.getElementById('noSelection').style.display='none'; document.getElementById('detailView').style.display='block'; document.getElementById('sName').textContent = s.name; document.getElementById('sClass').textContent = 'کلاس: ' + (s.class||'-'); renderRecords(s); drawSummaryChart(s); checkNearDue(s); }
+    document.getElementById('backToList').addEventListener('click', ()=>{ selectedId=null; document.getElementById('detailView').style.display='none'; document.getElementById('noSelection').style.display='block' })
+    document.getElementById('deleteStudent').addEventListener('click', ()=>{ if(!selectedId) return; if(!confirm('آیا مطمئن هستید؟')) return; db.students = db.students.filter(s=>s.id!==selectedId); saveDB(); selectedId=null; renderStudentList(searchEl.value); renderClassSummary(); document.getElementById('detailView').style.display='none'; document.getElementById('noSelection').style.display='block' })
+
+    // ===== سوابق: ذخیره، رندر، حذف =====
+    document.getElementById('saveRecord').addEventListener('click', ()=>{
+      if(!selectedId) return; const s = db.students.find(x=>x.id===selectedId); if(!s) return
+      const date = document.getElementById('recDate').value || new Date().toISOString().slice(0,10)
+      const attendance = document.getElementById('recAttendance').value
+      const subject = document.getElementById('recSubject').value || ''
+      const title = document.getElementById('recTitle').value.trim() || ''
+      const desc = document.getElementById('recDesc').value.trim() || ''
+      const due = document.getElementById('dueDate').value || ''
+      const follow = document.getElementById('followStatus').value || ''
+      s.records = s.records || []
+      s.records.push({id:uid(), date, attendance, subject, title, desc, due, follow})
+      saveDB(); renderRecords(s); renderStudentList(searchEl.value); drawSummaryChart(s); renderClassSummary(); document.getElementById('recDesc').value=''; document.getElementById('recTitle').value=''; document.getElementById('dueDate').value='';
+      // اگر مهلت نزدیک است، درخواست مجوز نوتیفیکیشن و ارسال
+      if(due){ const days = (new Date(due) - new Date())/86400000; if(days>=0 && days<=3){ requestNotificationPermission().then(()=>sendNotification('مهلت نزدیک','مهلت تکلیف برای '+s.name+' نزدیک است: '+title)) } }
+    })
+
+    document.getElementById('saveNoteOnly').addEventListener('click', ()=>{ if(!selectedId) return; const s = db.students.find(x=>x.id===selectedId); if(!s) return; const date = new Date().toISOString().slice(0,10); const note = document.getElementById('recDesc').value.trim(); s.records.push({id:uid(),date,attendance:'present',subject:'',title:'یادداشت',desc:note,due:'',follow:''}); saveDB(); renderRecords(s); renderClassSummary(); document.getElementById('recDesc').value=''; })
+
+    function renderRecords(s){ const tbody = document.querySelector('#recordsTable tbody'); tbody.innerHTML=''; const rows = (s.records||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)); const from = document.getElementById('filterFrom').value; const to = document.getElementById('filterTo').value; for(const r of rows){ if(from && r.date < from) continue; if(to && r.date > to) continue; const tr = document.createElement('tr'); tr.innerHTML = `<td>${formatDate(r.date)}</td><td>${r.attendance}</td><td>${r.subject||'-'}</td><td>${r.title||''}</td><td style="text-align:left">${r.desc||''}</td><td>${r.due? formatDate(r.due) : '-'}</td><td>${r.follow || '-'}</td><td><button data-id="${r.id}" class="delRec">حذف</button></td>`; tbody.appendChild(tr) } tbody.querySelectorAll('.delRec').forEach(b=>b.onclick=(e)=>{ const rid = e.target.dataset.id; if(!confirm('حذف رکورد؟')) return; s.records = s.records.filter(x=>x.id!==rid); saveDB(); renderRecords(s); renderClassSummary(); drawSummaryChart(s) }) }
+
+    document.getElementById('applyDateFilter').addEventListener('click', ()=>{ if(!selectedId) return; const s = db.students.find(x=>x.id===selectedId); if(!s) return; renderRecords(s) })
+
+    // ===== نمودار دانش‌آموز (حضور و مهلت‌ها) =====
+    function drawSummaryChart(s){ const cvs = document.getElementById('summaryChart'); const ctx = cvs.getContext('2d'); ctx.clearRect(0,0,cvs.width,cvs.height); const recs = s.records||[]; if(recs.length===0){ ctx.fillStyle='#0f172a'; ctx.font='14px Arial'; ctx.fillText('رکوردی ثبت نشده',10,30); return } const total = recs.length; const present = recs.filter(r=>r.attendance==='present').length; const absent = recs.filter(r=>r.attendance==='absent').length; const late = recs.filter(r=>r.attendance==='late').length; // pie
+      const centerX = cvs.width/2, centerY = cvs.height/2; const radius = Math.min(cvs.width,cvs.height)/3; const vals = [present, absent, late]; const colors = ['#16a34a','#ef4444','#f59e0b']; let start= -Math.PI/2; for(let i=0;i<vals.length;i++){ const slice = vals[i]/total * Math.PI*2; ctx.beginPath(); ctx.moveTo(centerX,centerY); ctx.arc(centerX,centerY,radius,start,start+slice); ctx.closePath(); ctx.fillStyle=colors[i]; ctx.fill(); start += slice } ctx.font='12px Arial'; ctx.fillStyle='#0f172a'; ctx.fillText(`حاضر: ${present}`, 10, 20); ctx.fillText(`غایب: ${absent}`, 10, 36); ctx.fillText(`تاخیر: ${late}`, 10, 52); }
+
+    // ===== بررسی مهلت‌های نزدیک =====
+    function checkNearDue(s){ const list = document.getElementById('nearDue'); list.innerHTML=''; const today = new Date(); for(const r of (s.records||[])){ if(r.due){ const days = Math.ceil((new Date(r.due) - today)/86400000); if(days>=0 && days<=3){ const d = document.createElement('div'); d.className='pill'; d.style.marginTop='6px'; d.textContent = `مهلت ${formatDate(r.due)} (${days} روز): ${r.title || '(بدون عنوان)'}`; list.appendChild(d) } } } }
+
+    // ===== گزارش کلی کلاس =====
+    function renderClassSummary(){ const statEl = document.getElementById('classStats'); statEl.innerHTML=''; const totalStudents = db.students.length; const totalRecords = db.students.reduce((acc,s)=>acc + (s.records? s.records.length:0),0); const attendances = {present:0,absent:0,late:0}; const subjectCounts = {}; const followCounts = {}; for(const s of db.students){ for(const r of (s.records||[])){ if(r.attendance) attendances[r.attendance] = (attendances[r.attendance]||0)+1; if(r.subject) subjectCounts[r.subject] = (subjectCounts[r.subject]||0) + 1; if(r.follow) followCounts[r.follow] = (followCounts[r.follow]||0)+1 } } const items = [ {t:'تعداد رکوردها',v:totalRecords}, {t:'حاضر (کل)',v:attendances.present}, {t:'غایب (کل)',v:attendances.absent}, {t:'تاخیر (کل)',v:attendances.late} ]; for(const it of items){ const d = document.createElement('div'); d.className='stat'; d.innerHTML=`<div class="small">${it.t}</div><div style="font-weight:700;margin-top:6px">${it.v}</div>`; statEl.appendChild(d) }
+      // نمودار موضوعات
+      const canvas = document.getElementById('classChart'); const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); const subs = Object.entries(subjectCounts).sort((a,b)=>b[1]-a[1]).slice(0,8); if(subs.length===0){ ctx.fillStyle='#0f172a'; ctx.font='14px Arial'; ctx.fillText('داده موضوعی کافی وجود ندارد',10,30); return } const margin=40; const chartW = canvas.width - margin*2; const chartH = canvas.height - margin*2; const barW = chartW / subs.length - 12; const maxV = Math.max(...subs.map(x=>x[1]),1); for(let i=0;i<subs.length;i++){ const x = margin + i*(barW+12); const h = (subs[i][1] / maxV) * chartH; const g = ctx.createLinearGradient(x, margin, x, margin+chartH); g.addColorStop(0,'#60a5fa'); g.addColorStop(1,'#2563eb'); ctx.fillStyle=g; ctx.fillRect(x, margin + (chartH - h), barW, h); ctx.fillStyle='#0f172a'; ctx.font='12px Arial'; ctx.fillText(subs[i][1], x, margin + (chartH - h) - 6); const lbl = subs[i][0].length>12? subs[i][0].slice(0,12)+'..': subs[i][0]; ctx.fillText(lbl, x, margin+chartH+18) }
+    }
+
+    // ===== جستجوی شرح‌ها =====
+    document.getElementById('searchDescBtn').addEventListener('click', ()=>{
+      const q = document.getElementById('searchDesc').value.trim().toLowerCase(); if(!q){ alert('عبارت جستجو خالی است'); return }
+      const results = []
+      for(const s of db.students){ for(const r of (s.records||[])){ if((r.desc||'').toLowerCase().includes(q) || (r.title||'').toLowerCase().includes(q)){ results.push({student:s.name, class:s.class||'', date:r.date, subject:r.subject||'', title:r.title||'', desc:r.desc||''}) } } }
+      if(results.length===0){ alert('یافت نشد') } else { const win = window.open('','_blank'); const html = `<html dir="rtl"><head><meta charset="utf-8"><title>نتایج جستجو</title></head><body><h3>نتایج جستجو: ${q}</h3><table border="1" style="width:100%;border-collapse:collapse"><tr><th>دانش‌آموز</th><th>کلاس</th><th>تاریخ</th><th>درس</th><th>عنوان</th><th>شرح</th></tr>` + results.map(r=>`<tr><td>${r.student}</td><td>${r.class}</td><td>${formatDate(r.date)}</td><td>${r.subject}</td><td>${r.title}</td><td>${r.desc}</td></tr>`).join('') + `</table></body></html>`; win.document.write(html); win.document.close(); }
+    })
+
+    // ===== CSV export (کل کلاس و تک دانش‌آموز) =====
+    function exportCSV(){ const rows = [['student_id','name','class','record_id','date','attendance','subject','title','description','due','follow']]; for(const s of db.students){ if(!s.records || s.records.length===0){ rows.push([s.id, s.name, s.class || '', '','','','','','','','']) } else { for(const r of s.records){ rows.push([s.id, s.name, s.class || '', r.id, r.date, r.attendance, r.subject || '', (r.title||''), (r.desc||'').replace(/\n/g,' ' ), r.due||'', r.follow||'' ]) } } } const csv = rows.map(r=> r.map(c=> '"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = 'students-data.csv'; a.click(); URL.revokeObjectURL(url) }
+    document.getElementById('exportBtn').addEventListener('click', exportCSV)
+
+    document.getElementById('exportStudentBtn').addEventListener('click', ()=>{ if(!selectedId){ alert('ابتدا یک دانش‌آموز را باز کنید'); return } const s = db.students.find(x=>x.id===selectedId); const rows = [['student_id','name','class','record_id','date','attendance','subject','title','description','due','follow']]; if(!s.records || s.records.length===0){ rows.push([s.id, s.name, s.class || '', '','','','','','','','']) } else { for(const r of s.records){ rows.push([s.id, s.name, s.class || '', r.id, r.date, r.attendance, r.subject || '', (r.title||''), (r.desc||'').replace(/\n/g,' ' ), r.due||'', r.follow||'' ]) } } const csv = rows.map(r=> r.map(c=> '"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = `student-${s.name.replace(/\s+/g,'_')}.csv`; a.click(); URL.revokeObjectURL(url) })
+
+    // ===== دانلود بکاپ JSON =====
+    document.getElementById('backupBtn').addEventListener('click', ()=>{ const dataStr = JSON.stringify(db, null, 2); const blob = new Blob([dataStr], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = 'students-backup.json'; a.click(); URL.revokeObjectURL(url) })
+
+    // ===== Print to PDF (via browser) =====
+    document.getElementById('printPdf').addEventListener('click', ()=>{ window.print(); })
+
+    // ===== JSON import =====
+    document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click())
+    document.getElementById('importFile').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const imported = JSON.parse(reader.result); if(!imported.students) { alert('فایل JSON ساختار مورد انتظار را ندارد.'); return } if(confirm('آیا می‌خواهید اطلاعات فعلی پاک شود و فایل وارد شود؟ Ok = جایگزین ، Cancel = ادغام')){ db = imported } else { const existingIds = new Set(db.students.map(s=>s.id)); for(const s of imported.students){ if(!existingIds.has(s.id)){ db.students.push(s) } else { db.students.push({...s,id:uid()}) } } if(imported.subjects){ for(const sub of imported.subjects){ if(!db.subjects.includes(sub)) db.subjects.push(sub) } } } saveDB(); renderStudentList(searchEl.value); renderClassSummary(); renderSubjects(); alert('وارد شد') }catch(err){ alert('خطا در خواندن فایل: '+err) } } reader.readAsText(f); e.target.value = '' })
+
+    // ===== سایر قابلیت‌های مفید برای کلاس مجازی پایه ششم =====
+    // میانبر کیبورد، درخواست نوتیفیکیشن
+    document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='n'){ document.getElementById('newName').focus() } if(e.key.toLowerCase()==='s'){ document.getElementById('search').focus() } })
+
+    function requestNotificationPermission(){ return new Promise((res)=>{ if(!('Notification' in window)){ return res(false) } if(Notification.permission==='granted') return res(true); if(Notification.permission!=='denied'){ Notification.requestPermission().then(p=>res(p==='granted')) } else res(false) }) }
+    function sendNotification(title, body){ if(!('Notification' in window)) return; if(Notification.permission==='granted'){ new Notification(title, {body}) } }
+
+    // قالب‌ها (نمونه‌ای برای معلم پایه ششم)
+    document.getElementById('applyTemplate').addEventListener('click', ()=>{
+      const t = document.getElementById('templateSelect').value; if(!t){ alert('یک قالب انتخاب کنید'); return }
+      if(t==='basic'){ document.getElementById('recTitle').value='اهداف درس: ...'; document.getElementById('recDesc').value='فعالیت: \nروش اجرا: \nنتیجه مورد انتظار: \nتکلیف: \nنکات معلم:' } else if(t==='project'){ document.getElementById('recTitle').value='پروژه: عنوان ...'; document.getElementById('recDesc').value='هدف پروژه: \nمراحل اجرای پروژه: \nوظایف هر گروه: \nمنابع: \nمهلت:' } })
+
+    // ===== متدهای کمکی =====
+    function checkNearAll(){ const today=new Date(); for(const s of db.students){ for(const r of (s.records||[])){ if(r.due){ const days = Math.ceil((new Date(r.due) - today)/86400000); if(days>=0 && days<=1){ requestNotificationPermission().then(()=>sendNotification('مهلت نزدیک', `${s.name}: ${r.title || '(بدون عنوان)'} تا ${formatDate(r.due)}`)) } } } } }
+
+    // اجرا در شروع
+    loadDB(); renderStudentList(); renderClassSummary(); renderSubjects(); checkNearAll();
+
+    // فعال‌سازی هوشمند دکمه‌ها (اگر دکمه کار نکرد به این تابع نگاه کنید)
+    (function ensureButtons(){ const ids = ['exportBtn','exportStudentBtn','printPdf','backupBtn','importBtn','addBtn','updateBtn','addDummy','addSubject','clearSubjects','saveRecord','saveNoteOnly','backToList','deleteStudent','searchDescBtn']; ids.forEach(id=>{ if(!document.getElementById(id)){ console.warn('missing button',id) } }) })();
+
+  </script>
+</body>
+</html>
